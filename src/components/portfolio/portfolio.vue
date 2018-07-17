@@ -7,10 +7,10 @@
     <div class="portfolio-head">
       开市 <i class="el-icon-more" style="padding:0 20px;"></i>
     </div>
-    <div class="portfolio-section">
+    <div class="portfolio-section" v-show="portfolioSection">
         <div class="section-left-title">
           <h4>投资组合</h4>
-          <i class="el-icon-close" style="font-size: 30px;"></i>
+          <i class="el-icon-close" @click="closeClick" style="font-size: 30px;"></i>
         </div>
         <div class="section-left-tab">
           <div class="tab-left">
@@ -28,9 +28,9 @@
             </div>
           </div>
           <div class="tab-right">
-            <el-button type="info">刷新</el-button>
-            <el-button type="info">买入</el-button>
-            <el-button type="info">卖出</el-button>
+            <button type="button" @click="refreshClick">刷新</button>
+            <button type="button" @click="buyClick">买入</button>
+            <button type="button">卖出</button>
           </div>
         </div>
         <div class="section-left-list">
@@ -38,47 +38,99 @@
             <div v-for="(item, index) in list" :key="index">{{item.name}}</div>
           </div>
           <ul class="list-main">
-            <li>
+            <li v-for="(item, index) in items" :key="index" @click="listClick(item, index)" :class="{activeBg:index===currentIndex}">
               <div>
                 <div>
-                  <p>长河</p>
-                  <p>1</p>
+                  <div>
+                    <h5>{{item.Market}}</h5>
+                    <h5>{{item.Symbol}}</h5>
+                  </div>
+                  <i :class="[item.Invalid?'el-icon-arrow-up':'el-icon-arrow-down']" style="font-size: 20px;" @click="iconClick(item)"></i>
                 </div>
-                <i :class="[true?'el-icon-arrow-down':'el-icon-arrow-up']"></i>
+                <div>
+                  <h5>{{item.Volume.toFixed(2)}}</h5>
+                  <h5>{{item.SellableVolume.toFixed(2)}}</h5>
+                </div>
+                <div>
+                  {{item.AverageCost.toFixed(2)}}
+                </div>
+                <div>
+                  <h5>{{item.CurrentPrice.toFixed(2)}}</h5>
+                  <h5 :class="[item.ChangePercentage>0?'green':item.ChangePercentage===0?'':'red']">{{item.ChangePercentage===0?0:(item.ChangePercentage*100).toFixed(3)}}%</h5>
+                </div>
+                <div>
+                  {{item.MarketValue.toFixed(2)}}
+                </div>
+                <div>
+                  {{item.Charge.toFixed(2)}}
+                </div>
+                <div>
+                  <h5 :class="[item.Profit<0?'red':'']">{{item.Profit.toFixed(2)}}</h5>
+                  <h5 :class="[item.TempProfitPercentage>0?'green':item.TempProfitPercentage===0?'':'red']">{{item.TempProfitPercentage===0?0:(item.TempProfitPercentage*100).toFixed(3)}}%</h5>
+                </div>
+                <div>
+                  <img src="#" :class="icon(item.Status)" alt="">
+                  <h4>{{item.Status | gameStatus}}</h4>
+                </div>
               </div>
-              <div>
-                <p>232</p>
-                <p>43543</p>
-              </div>
-              <div>
-                343434
-              </div>
-              <div>
-                <p>2234</p>
-                <p>3232%</p>
-              </div>
-              <div>
-                3498439483
-              </div>
-              <div>
-                2323
-              </div>
-              <div>
-                <p>2323</p>
-                <p>3243</p>
-              </div>
-              <div>
-                <img src="#" alt="">
-                <h4>买入中</h4>
-              </div>
+              <ul class="li-position" v-show="item.Invalid">
+                <li>
+                  <a>手动买入中</a>
+                </li>
+                <li>
+                  <a>指令数量: 2000</a>
+                </li>
+                <li>
+                  <a>价格: 34.43</a>
+                </li>
+                <li>
+                  <a>剩余有效天数: 1</a>
+                </li>
+                <li>
+                  <a>2017-4-2</a>
+                </li>
+                <li>
+                  <a @click.stop="item.Invalid=!item.Invalid">撤销</a>
+                </li>
+              </ul>
             </li>
           </ul>
         </div>
+        <el-dialog
+          title="提示"
+          :visible.sync="visible"
+          width="30%"
+          center>
+          <el-form ref="form" :model="form" label-width="80px">
+            <el-form-item label="当前股价">
+              <el-input v-model="form.price">
+                <template slot="append">元</template>
+              </el-input>
+            </el-form-item>
+            <el-form-item label="限价交易">
+              <el-input v-model="form.limitPrice">
+                <template slot="append">元</template>
+              </el-input>
+            </el-form-item>
+            <el-form-item label="有效天数">
+              <el-input v-model="form.dayCount" :disabled="true">
+                <template slot="append">天</template>
+              </el-input>
+            </el-form-item>
+          </el-form>
+          <span slot="footer" class="dialog-footer">
+            <el-button @click="visible = false">取 消</el-button>
+            <el-button type="primary" @click="onSubmit">提交</el-button>
+          </span>
+        </el-dialog>
     </div>
   </div>
 </template>
 
 <script>
+import api from '@/api/api'
+const opkey = 'f497ba51-c0c7-443f-94e7-ca6d736ff89e'
+const accountId = '4f6f1d13-3cc8-440e-a19f-ad18458875fd'
 export default {
   // 组件的名称
   name: 'portfolio',
@@ -89,6 +141,8 @@ export default {
   // 数据绑定
   data () {
     return {
+      // 控制投资组合主体内容是否显示
+      portfolioSection: true,
       isTrue: false,
       list: [
         { id: '1', name: '股票' },
@@ -100,7 +154,16 @@ export default {
         { id: '7', name: '盈利' },
         { id: '8', name: '状态' }
       ],
-      data: []
+      items: [],
+      currentIndex: -1,
+      // itemObj: {},
+      // dialog 对话框的显示
+      visible: false,
+      form: {
+        price: 0,
+        limitPrice: 0,
+        dayCount: 1
+      }
     }
   },
 
@@ -112,6 +175,17 @@ export default {
 
   // 方法
   methods: {
+    // 获取数据的方法
+    _getAccountPortfolioInfos () {
+      let params = {
+        opkey: opkey,
+        accountId: accountId
+      }
+      api.getAccountPortfolioInfos(params).then((res) => {
+        console.log(res.data)
+        this.items = res.data.Items
+      })
+    },
     // gotoPush () {
     //   if (this.isTrue) {
     //     this.$refs.sectionRight.style.marginLeft = '50%'
@@ -123,24 +197,83 @@ export default {
     //     this.isTrue = true
     //   }
     // }
+    // 确定状态图标的 方法
+    icon (val) {
+      return val === 'TRADEIN' ? 'icon-buy' : val === 'TRADEOUT' ? 'icon-buysell' : 'icon-sell'
+    },
+    // 点击上下图标的方法
+    iconClick (val) {
+      val.Invalid = !val.Invalid
+    },
+    // 点击列表每一行的 方法
+    listClick (val, index) {
+      this.currentIndex = index
+    },
+    // 关闭整个 投资组合的方法
+    closeClick () {
+      this.$confirm('确定关闭投资组合界面吗, 是否继续?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.portfolioSection = false
+        this.$message({
+          type: 'success',
+          message: '关闭成功!'
+        })
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: '已取消'
+        })
+      })
+    },
+    // 买入 按钮指令的 方法
+    buyClick () {
+      if (this.currentIndex === -1) {
+        this.$message({
+          type: 'warning',
+          message: '请选择一支股票!'
+        })
+      } else {
+        this.visible = true
+      }
+    },
+    // 买入指令后，提交指令的方法
+    onSubmit () {
+      alert(3)
+    },
+    // 手动刷新列表的方法
+    refreshClick () {
+      alert('刷新')
+    }
   },
 
   // 计算属性
-  computed: {},
+  computed: {
+  },
 
   // 监听
   watch: {
     // 监听路由变化
-    '$route' (to, from) { }
+    '$route' (to, from) { },
+    currentIndex (val, oldVal) {
+      if (val !== oldVal) {
+      }
+    }
   },
 
   // 常用钩子函数，总共有8个，可以参照vue的生命周期看
 
   // 完成了 data 数据的初始化，el没有，就是说页面的dom没有完成转化，还是 {{data}} 这种
-  created () { },
+  created () {
+    // 获取数据的方法
+    this._getAccountPortfolioInfos()
+  },
 
   // 完成挂载，相当于dom ready
-  mounted () { },
+  mounted () {
+  },
 
   // 销毁，可以做一些定时器的销毁,缓存的清除等操作
   destroyed () { }
@@ -148,6 +281,25 @@ export default {
 </script>
 
 <style lang="scss" scoped='scoped'>
+.activeBg {
+  background: #15364c;
+}
+.icon-buy {
+  background: url("../../assets/images/icon-buy.png") no-repeat center center;
+}
+.icon-buysell {
+  background: url("../../assets/images/icon-buysell.png") no-repeat center
+    center;
+}
+.icon-sell {
+  background: url("../../assets/images/icon-sell.png") no-repeat center center;
+}
+.red {
+  color: #ed1c24;
+}
+.green {
+  color: #26ff00;
+}
 .portfolio {
   background: #000;
   min-width: 1200px;
@@ -160,7 +312,7 @@ export default {
   }
   .portfolio-section {
     color: #fff;
-    height: 500px;
+    height: 100%;
     background: #3e4949;
     padding: 10px;
     .section-left-title {
@@ -192,6 +344,16 @@ export default {
       .tab-right {
         flex: 1;
         text-align: right;
+        button {
+          width: 80px;
+          height: 26px;
+          background: #506872;
+          border-radius: 3px;
+          &:hover {
+            cursor: pointer;
+            background: #235c5c;
+          }
+        }
       }
     }
     .section-left-list {
@@ -221,38 +383,108 @@ export default {
       .list-main {
         background: #1a1a1a;
         li {
-          display: flex;
+          // display: flex;
           border-bottom: 1px solid #333;
-          div:nth-child(1) {
-            flex: 0 0 15%;
+          // padding: 10px 0;
+          // position: relative;
+          .li-position {
+            // position: absolute;
+            // left: 0;
+            // top: 60px;
             text-align: left;
+            width: 100%;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
+            background: #00113f;
+            li:nth-child(1) {
+              flex: 0 0 20%;
+            }
+            li {
+              flex: 1;
+              padding: 10px;
+            }
+            li:last-child {
+              a {
+                display: inline-block;
+                text-align: center;
+                width: 80px;
+                height: 26px;
+                line-height: 26px;
+                background: #00755f;
+                border-radius: 3px;
+                &:hover {
+                  cursor: pointer;
+                  background: #219696;
+                }
+              }
+            }
+          }
+          div {
+            display: flex;
+            // border-bottom: 1px solid #333;
+            padding: 2px 0;
+            width: 100%;
+            // position: relative;
+            div:nth-child(1) {
+              flex: 0 0 15%;
+              text-align: left;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              div {
+                display: flex;
+                flex-direction: column;
+              }
+              i {
+                &:hover {
+                  cursor: pointer;
+                }
+              }
+            }
+            div:nth-child(2) {
+              flex: 0 0 10%;
+            }
             div {
+              flex: 1;
+              // height: 50px;
+              text-align: right;
+              h5 {
+                font-size: 16px;
+                font-weight: normal;
+              }
+              // line-height: 25px;
+              h5:nth-child(1) {
+                margin-bottom: 2px;
+              }
+            }
+            div:nth-child(2),
+            div:nth-child(4),
+            div:nth-child(7) {
               display: flex;
               flex-direction: column;
             }
-          }
-          div:nth-child(2) {
-            flex: 0 0 10%;
-          }
-          div {
-            flex: 1;
-            height: 60px;
-            text-align: right;
-            line-height: 30px;
-          }
-          div:nth-child(3),div:nth-child(5),div:nth-child(6) {
-            line-height: 60px;
-          }
-          div:last-child {
-            flex: 0 0 30%;
-            text-align: left;
-            padding-left: 8%;
-            display: flex;
-            // justify-content: center;
-            align-items: center;
+            div:nth-child(3),
+            div:nth-child(5),
+            div:nth-child(6) {
+              display: flex;
+              justify-content: flex-end;
+              align-items: center;
+            }
+            div:nth-child(8) {
+              flex: 0 0 30%;
+              text-align: left;
+              padding-left: 8%;
+              display: flex;
+              // justify-content: center;
+              align-items: center;
+              img {
+                display: inline-block;
+                width: 20px;
+                height: 20px;
+                padding-right: 30px;
+              }
+            }
           }
         }
       }

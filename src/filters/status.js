@@ -3,10 +3,10 @@ export const gameStatus = (type) => {
     return
   }
   let gameStatus = {
-    '0': '买入中',
-    '1': '持股中',
-    '2': '持股买出中',
-    '3': '买入卖出中'
+    'TRADEIN': '买入中',
+    'HOLDING': '持股买出中',
+    // '2': '持股买出中',
+    'TRADEOUT': '持股中'
   }
   return gameStatus[type]
 }
