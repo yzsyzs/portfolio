@@ -1,0 +1,43 @@
+// 公用代码
+html{
+  font-size: 62.5%;/*10 ÷ 16 × 100% = 62.5%*/
+}
+body{
+  min-height: 100%;
+  background:#fff;
+  margin: 0;
+  font-size: 1rem;/*1.4 × 10px = 14px */
+  font-family: "Arial","Microsoft YaHei","黑体","宋体",sans-serif;
+}
+ul,li,h1,h2,h3,h4,h5,h6,dl,dt,dd,p,input,button {
+  margin:0;
+  padding:0;
+  border:none;
+  list-style:none;
+}
+input{
+  outline:none;
+}
+a{
+  text-decoration: none;
+}
+a:hover{
+  text-decoration: underline;
+  color:#f00;
+  cursor: pointer;
+}
+.clear{
+  clear:both;
+}
+.lf{
+  float:left;
+}
+.rt{
+  float:right;
+}
+img{
+  vertical-align: bottom;
+}
+[v-cloak] {
+  display: none;
+}
