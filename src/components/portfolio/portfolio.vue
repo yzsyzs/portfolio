@@ -16,19 +16,19 @@
           <div class="tab-left">
             <div>
               <h5>总资产</h5>
-              <p>8668686.00</p>
+              <p>{{accountCapitalInfo.TotalAsset.toFixed(2)}}</p>
             </div>
             <div>
               <h5>现金结余</h5>
-              <p>2342.00</p>
+              <p>{{accountCapitalInfo.TotalAmount.toFixed(2)}}</p>
             </div>
             <div>
               <h5>可用现金 / 冻结现金</h5>
-              <p>3344.00/2424.00</p>
+              <p>{{accountCapitalInfo.AvailableCashAmount.toFixed(2)}} / {{accountCapitalInfo.FreezeAmount.toFixed(2)}}</p>
             </div>
           </div>
           <div class="tab-right">
-            <button type="button" @click="refreshClick">刷新</button>
+            <button type="button" @click="refreshClick" v-loading.fullscreen.lock="fullscreenLoading">刷新</button>
             <button type="button" @click="buyClick">买入</button>
             <button type="button">卖出</button>
           </div>
@@ -38,14 +38,14 @@
             <div v-for="(item, index) in list" :key="index">{{item.name}}</div>
           </div>
           <ul class="list-main">
-            <li v-for="(item, index) in items" :key="index" @click="listClick(item, index)" :class="{activeBg:index===currentIndex}">
-              <div>
+            <li v-for="(item, index) in items" :key="index">
+              <div @click="listClick(item, index)" :class="{activeBg:index===currentIndex}">
                 <div>
                   <div>
-                    <h5>{{item.Market}}</h5>
-                    <h5>{{item.Symbol}}</h5>
+                    <span>{{item.Cname}}</span>
+                    <span>{{item.Symbol}}</span>
                   </div>
-                  <i :class="[item.Invalid?'el-icon-arrow-up':'el-icon-arrow-down']" style="font-size: 20px;" @click="iconClick(item)"></i>
+                  <i v-if="item.buyList.length" :class="[item.Invalid?'el-icon-arrow-up':'el-icon-arrow-down']" style="font-size: 20px;" @click.stop="iconClick(item, index)"></i>
                 </div>
                 <div>
                   <h5>{{item.Volume.toFixed(2)}}</h5>
@@ -69,35 +69,25 @@
                   <h5 :class="[item.TempProfitPercentage>0?'green':item.TempProfitPercentage===0?'':'red']">{{item.TempProfitPercentage===0?0:(item.TempProfitPercentage*100).toFixed(3)}}%</h5>
                 </div>
                 <div>
-                  <img src="#" :class="icon(item.Status)" alt="">
+                  <i :class="icon(item.Status)"></i>
                   <h4>{{item.Status | gameStatus}}</h4>
                 </div>
               </div>
               <ul class="li-position" v-show="item.Invalid">
-                <li>
-                  <a>手动买入中</a>
-                </li>
-                <li>
-                  <a>指令数量: 2000</a>
-                </li>
-                <li>
-                  <a>价格: 34.43</a>
-                </li>
-                <li>
-                  <a>剩余有效天数: 1</a>
-                </li>
-                <li>
-                  <a>2017-4-2</a>
-                </li>
-                <li>
-                  <a @click.stop="item.Invalid=!item.Invalid">撤销</a>
+                <li v-for="(value, key) in item.buyList" :key="key">
+                  <span>{{value.type}}</span>
+                  <span style="padding-left:30px">指令数量: {{value.count}}</span>
+                  <span style="padding-left:30px">价格: {{Number(value.price).toFixed(2)}}</span>
+                  <span>剩余有效天数: {{value.dayCount}}</span>
+                  <span style="width:7%;">{{value.date}}</span>
+                  <button @click.stop="cancelClick(value)">撤销</button>
                 </li>
               </ul>
             </li>
           </ul>
         </div>
         <el-dialog
-          title="提示"
+          title="当前股票"
           :visible.sync="visible"
           width="30%"
           center>
@@ -108,7 +98,7 @@
               </el-input>
             </el-form-item>
             <el-form-item label="限价交易">
-              <el-input v-model="form.limitPrice">
+              <el-input v-model="form.count">
                 <template slot="append">元</template>
               </el-input>
             </el-form-item>
@@ -116,6 +106,9 @@
               <el-input v-model="form.dayCount" :disabled="true">
                 <template slot="append">天</template>
               </el-input>
+            </el-form-item>
+            <el-form-item label="时间选择">
+              <el-date-picker type="date" placeholder="选择日期" value-format="yyyy-MM-dd" v-model="form.date" style="width: 100%;"></el-date-picker>
             </el-form-item>
           </el-form>
           <span slot="footer" class="dialog-footer">
@@ -141,6 +134,10 @@ export default {
   // 数据绑定
   data () {
     return {
+      // loading
+      fullscreenLoading: false,
+      // 资金对象数据
+      accountCapitalInfo: {},
       // 控制投资组合主体内容是否显示
       portfolioSection: true,
       isTrue: false,
@@ -154,15 +151,25 @@ export default {
         { id: '7', name: '盈利' },
         { id: '8', name: '状态' }
       ],
+      leftArr: [],
+      rightArr: [],
       items: [],
       currentIndex: -1,
-      // itemObj: {},
+      itemObj: {},
       // dialog 对话框的显示
       visible: false,
+      // 每一条的投资组合买入的数组
+      buyList: [
+        { id: 1, type: '手动买入中', count: 400, price: 33, dayCount: 1, date: '2018-20-2' }
+      ],
+      buyListId: 1,
       form: {
+        id: null,
         price: 0,
-        limitPrice: 0,
-        dayCount: 1
+        count: 0,
+        dayCount: 1,
+        type: '手动买入中',
+        date: ''
       }
     }
   },
@@ -175,39 +182,141 @@ export default {
 
   // 方法
   methods: {
-    // 获取数据的方法
+    // 获取右侧数据的方法
     _getAccountPortfolioInfos () {
+      // const loading = this.$loading({
+      //   lock: true,
+      //   text: 'Loading',
+      //   spinner: 'el-icon-loading',
+      //   background: 'rgba(0, 0, 0, 0.7)'
+      // })
       let params = {
         opkey: opkey,
         accountId: accountId
       }
-      api.getAccountPortfolioInfos(params).then((res) => {
-        console.log(res.data)
-        this.items = res.data.Items
+      return new Promise((resolve, reject) => {
+        api.getAccountPortfolioInfos(params).then((res) => {
+          resolve(res.data.Items)
+        })
+      })
+      // api.getAccountPortfolioInfos(params).then((res) => {
+      // this.rightArr = res.data.Items
+      // this.items = res.data.Items.map((item) => {
+      //   let obj = {
+      //     AverageCost: item.AverageCost,
+      //     AverageTradePrice: item.AverageTradePrice,
+      //     ChangePercentage: item.ChangePercentage,
+      //     Charge: item.Charge,
+      //     CurrentPrice: item.CurrentPrice,
+      //     HoldingDate: item.HoldingDate,
+      //     HoldingDays: item.HoldingDays,
+      //     Invalid: item.Invalid,
+      //     LastUpdateTime: item.LastUpdateTime,
+      //     Market: item.Market,
+      //     MarketValue: item.MarketValue,
+      //     MergeState: item.MergeState,
+      //     MonitorStrategyId: item.MonitorStrategyId,
+      //     MonitorStrategyName: item.MonitorStrategyName,
+      //     ProductType: item.ProductType,
+      //     Profit: item.Profit,
+      //     SellableVolume: item.SellableVolume,
+      //     Status: item.Status,
+      //     Symbol: item.Symbol,
+      //     TempProfitPercentage: item.TempProfitPercentage,
+      //     TotalVolume: item.TotalVolume,
+      //     TradeStatus: item.TradeStatus,
+      //     Volume: item.Volume,
+      //     Id: item.Id,
+      //     buyList: []
+      //   }
+      //   return obj
+      // })
+      // loading.close()
+      // })
+    },
+    // 资金查询接口
+    _getAccountCapitalById () {
+      let params = {
+        opkey: opkey,
+        accountId: accountId
+      }
+      return new Promise((resolve, reject) => {
+        api.getAccountCapitalById(params).then((res) => {
+          resolve(res.data)
+        })
       })
     },
-    // gotoPush () {
-    //   if (this.isTrue) {
-    //     this.$refs.sectionRight.style.marginLeft = '50%'
-    //     this.$refs.sectionLeft.style.width = '50%'
-    //     this.isTrue = false
-    //   } else {
-    //     this.$refs.sectionRight.style.marginLeft = '90%'
-    //     this.$refs.sectionLeft.style.width = '90%'
-    //     this.isTrue = true
-    //   }
-    // }
+    // 获取每一只股票列表轮询更新(10s)的方法
+    _getStockList () {
+      let params = {
+        opkey: opkey,
+        market: 'HKEX'
+      }
+      return new Promise((resolve, reject) => {
+        api.getStockList(params).then((res) => {
+          resolve(res.data.Items)
+        })
+      })
+    },
+    // 拼接左侧股票列表和右侧数据的方法
+    _concatData () {
+      const loading = this.$loading({
+        lock: true,
+        text: 'Loading',
+        spinner: 'el-icon-loading',
+        background: 'rgba(0, 0, 0, 0.7)'
+      })
+      const promiseGetStockList = this._getStockList()
+      const promiseGetAccountPortfolioInfos = this._getAccountPortfolioInfos()
+      Promise.all([
+        promiseGetStockList,
+        promiseGetAccountPortfolioInfos
+      ]).then(([leftArr, rightArr]) => {
+        for (let j = 0; j < leftArr.length; j++) {
+          for (let i = 0; i < rightArr.length; i++) {
+            if (rightArr[i].Symbol === leftArr[j].Symbol) {
+              this.items.push(Object.assign({}, rightArr[i], leftArr[j], { buyList: [] }))
+            }
+          }
+        }
+        // leftArr.forEach((item) => {
+        //   for (let i = 0; i < rightArr.length; i++) {
+        //     if (rightArr[i].Symbol === item.Symbol) {
+        //       this.items.push(Object.assign({}, rightArr[i], item, { buyList: [] }))
+        //     }
+        //   }
+        // })
+        console.log(this.items)
+      })
+      loading.close()
+    },
     // 确定状态图标的 方法
     icon (val) {
       return val === 'TRADEIN' ? 'icon-buy' : val === 'TRADEOUT' ? 'icon-buysell' : 'icon-sell'
     },
     // 点击上下图标的方法
-    iconClick (val) {
+    iconClick (val, index) {
+      this.currentIndex = index
+      this.itemObj = Object.assign({}, val)
       val.Invalid = !val.Invalid
+      this._invalid(val)
+    },
+    _invalid (val) {
+      if (val.Invalid) {
+        this.items.forEach((item) => {
+          item.Invalid = false
+          if (item.Id === val.Id) item.Invalid = true
+        })
+      }
     },
     // 点击列表每一行的 方法
     listClick (val, index) {
       this.currentIndex = index
+      val.Invalid = !val.Invalid
+      this._invalid(val)
+      // 获取每一只股票列表轮询更新(10s)的方法
+      // this._getStockList()
+      this.itemObj = Object.assign({}, val)
     },
     // 关闭整个 投资组合的方法
     closeClick () {
@@ -241,11 +350,33 @@ export default {
     },
     // 买入指令后，提交指令的方法
     onSubmit () {
-      alert(3)
+      this.buyListId++
+      this.form = Object.assign({}, this.form, { id: this.buyListId })
+      this.items.find(item => item.Id === this.itemObj.Id).buyList.push(this.form)
+      this.form = {
+        id: null,
+        price: 0,
+        count: 0,
+        dayCount: 1,
+        type: '手动买入中',
+        date: ''
+      }
+      this.visible = false
     },
     // 手动刷新列表的方法
     refreshClick () {
-      alert('刷新')
+      // 获取数据的方法
+      // this._getAccountPortfolioInfos()
+      // 资金查询接口
+      this._getAccountCapitalById().then((res) => {
+        this.accountCapitalInfo = { ...res }
+      })
+      // 获取每一只股票列表轮询更新(10s)的方法
+      // this._getStockList()
+      // 清空templete 数组
+      this.items = []
+      // 左右数据拼接的方法
+      this._concatData()
     }
   },
 
@@ -268,7 +399,19 @@ export default {
   // 完成了 data 数据的初始化，el没有，就是说页面的dom没有完成转化，还是 {{data}} 这种
   created () {
     // 获取数据的方法
-    this._getAccountPortfolioInfos()
+    // this._getAccountPortfolioInfos((res) => {
+    //   this.rightArr = res
+    // })
+    // 资金查询接口
+    this._getAccountCapitalById().then((res) => {
+      this.accountCapitalInfo = { ...res }
+    })
+    // 获取每一只股票列表轮询更新(10s)的方法
+    // this._getStockList((res) => {
+    //   this.leftArr = res
+    // })
+    // 左右数据拼接的方法
+    this._concatData()
   },
 
   // 完成挂载，相当于dom ready
@@ -382,35 +525,29 @@ export default {
       }
       .list-main {
         background: #1a1a1a;
+        padding: 0 10px;
         li {
-          // display: flex;
           border-bottom: 1px solid #333;
-          // padding: 10px 0;
-          // position: relative;
           .li-position {
-            // position: absolute;
-            // left: 0;
-            // top: 60px;
-            text-align: left;
-            width: 100%;
-            display: flex;
-            justify-content: flex-start;
-            align-items: center;
-            background: #00113f;
-            li:nth-child(1) {
-              flex: 0 0 20%;
-            }
             li {
-              flex: 1;
-              padding: 10px;
-            }
-            li:last-child {
-              a {
+              text-align: left;
+              width: 100%;
+              background: #00113f;
+              span {
+                display: inline-block;
+                width: 17%;
+                height: 20px;
+                line-height: 20px;
+                padding: 10px 0;
+              }
+              button {
                 display: inline-block;
                 text-align: center;
                 width: 80px;
                 height: 26px;
                 line-height: 26px;
+                color: #fff;
+                flex: 0 0 20%;
                 background: #00755f;
                 border-radius: 3px;
                 &:hover {
@@ -431,12 +568,18 @@ export default {
               text-align: left;
               display: flex;
               justify-content: space-between;
-              align-items: center;
+              // align-items: center;
               div {
                 display: flex;
                 flex-direction: column;
+                flex: 1;
+                span:nth-child(2) {
+                  color: #39fffa;
+                }
               }
               i {
+                text-align: right;
+                flex: 1;
                 &:hover {
                   cursor: pointer;
                 }
@@ -478,11 +621,11 @@ export default {
               display: flex;
               // justify-content: center;
               align-items: center;
-              img {
+              i {
                 display: inline-block;
                 width: 20px;
                 height: 20px;
-                padding-right: 30px;
+                padding-right: 10px;
               }
             }
           }
