@@ -13,6 +13,10 @@ axios.interceptors.request.use(
     // if (/* store.state.token */localStorage.mmaAdminToken) {
     //   config.headers.Authorization = localStorage.mmaAdminToken // `token ${store.state.token}`
     // }
+    // config.data = JSON.stringify(config.data)
+    // config.headers = {
+    //   'Content-Type': 'application/x-xxx-form-urlencoded'
+    // }
     return config
   },
   err => {

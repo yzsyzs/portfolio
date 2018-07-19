@@ -75,9 +75,9 @@
               </div>
               <ul class="li-position" v-show="item.Invalid">
                 <li v-for="(value, key) in item.buyList" :key="key">
-                  <span>{{value.type}}</span>
-                  <span style="padding-left:30px">指令数量: {{value.count}}</span>
-                  <span style="padding-left:30px">价格: {{Number(value.price).toFixed(2)}}</span>
+                  <span>{{value.OrderType}}</span>
+                  <span style="padding-left:30px">指令数量: {{value.Volume}}</span>
+                  <span style="padding-left:30px">价格: {{Number(value.Price).toFixed(2)}}</span>
                   <span>剩余有效天数: {{value.dayCount}}</span>
                   <span style="width:7%;">{{value.date}}</span>
                   <button @click.stop="cancelClick(item, value)">撤销</button>
@@ -90,17 +90,22 @@
           title="买入股票界面"
           :visible.sync="visible"
           width="80%"
+          :show-close="false"
           center>
           <el-form ref="form" :inline="true" :model="form" style="text-align:center;" label-width="80px">
             <el-row>
               <el-col :span="24">
+                <el-form-item label="出价方式">
+                  <el-input v-model="form.OrderType">
+                  </el-input>
+                </el-form-item>
                 <el-form-item label="限价交易">
-                  <el-input v-model="form.price">
+                  <el-input v-model="form.Price">
                     <template slot="append">元</template>
                   </el-input>
                 </el-form-item>
                 <el-form-item label="指定数量">
-                  <el-input v-model="form.count">
+                  <el-input v-model="form.Volume">
                     <template slot="append">元</template>
                   </el-input>
                 </el-form-item>
@@ -124,7 +129,7 @@
               </el-col>
               <el-col :span="12">
                 <span class="dialog-footer">
-                  <el-button @click="visible = false">取 消</el-button>
+                  <el-button @click="cancel">取 消</el-button>
                   <el-button type="primary" @click="onSubmit">提交</el-button>
                 </span>
               </el-col>
@@ -245,10 +250,10 @@ export default {
       form: {
         id: null,
         list: null,
-        count: 0,
-        price: 0,
+        Volume: 0,
+        Price: 0,
         dayCount: 1,
-        type: '手动买入中',
+        OrderType: '',
         date: ''
       },
       // 定时器
@@ -480,20 +485,54 @@ export default {
       }
       time()
     },
+    _commitManualTrade () {
+      let params = {
+        opkey: opkey,
+        accountId: accountId,
+        tradeType: 'BUY',
+        manualtradeRequest: this.form
+      }
+      return new Promise((resolve, reject) => {
+        api.commitManualTrade(params).then((res) => {
+          resolve(res.data)
+        })
+      })
+    },
+    // 取消的方法
+    cancel () {
+      clearTimeout(this.timer)
+      this.form = {
+        id: null,
+        list: null,
+        Price: 0,
+        Volume: 0,
+        dayCount: 1,
+        OrderType: '手动买入中',
+        date: ''
+      }
+      this.portfolioNewPriceList = []
+      this.visible = false
+    },
     // 买入指令后，提交指令的方法
     onSubmit () {
+      clearTimeout(this.timer)
+      // post 请求提交买入股票的方法
+      this._commitManualTrade().then((res) => {
+        console.log(res)
+      })
       this.buyListId++
       this.form = Object.assign({}, this.form, { id: this.buyListId })
       this.items.find(item => item.Symbol === this.form.list).buyList.push(this.form)
       this.form = {
         id: null,
         list: null,
-        price: 0,
-        count: 0,
+        Price: 0,
+        Volume: 0,
         dayCount: 1,
-        type: '手动买入中',
+        OrderType: '',
         date: ''
       }
+      this.portfolioNewPriceList = []
       this.visible = false
     },
     // 撤销 的方法
@@ -502,6 +541,7 @@ export default {
     },
     // 手动刷新列表的方法
     refreshClick () {
+      this.currentIndex = -1
       // 资金查询接口
       this._getAccountCapitalById().then((res) => {
         this.accountCapitalInfo = { ...res }
@@ -538,9 +578,12 @@ export default {
     // 左右数据拼接的方法
     this._concatData()
   },
-
   // 完成挂载，相当于dom ready
   mounted () {
+    let params = { opkey: opkey, authorizationcode: 'fdsal' }
+    api.verifyUserAuthorizationCode(params).then((res) => {
+      console.log(res)
+    })
   },
 
   // 销毁，可以做一些定时器的销毁,缓存的清除等操作
