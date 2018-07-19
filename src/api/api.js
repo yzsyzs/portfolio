@@ -13,5 +13,13 @@ export default {
   // 获取每一只股票列表
   getStockList: (req) => {
     return axios.get(`${BASEURL}/TradeSystem2_8_8_Test/StockService.svc/rest/GetStockList?` + qs.stringify(req))
+  },
+  // 获取股票最新报价
+  getStockPrice: (req) => {
+    return axios.get(`${BASEURL}/TradeSystem2_8_8_Test/StockService.svc/rest/GetStockPrice?` + qs.stringify(req))
+  },
+  // 获取股票信息详情
+  getStockDetail: req => {
+    return axios.get(`${BASEURL}/TradeSystem2_8_8_Test/StockService.svc/rest/GetStockDetail?` + qs.stringify(req))
   }
 }

@@ -45,7 +45,7 @@
                     <span>{{item.Cname}}</span>
                     <span>{{item.Symbol}}</span>
                   </div>
-                  <i v-if="item.buyList.length" :class="[item.Invalid?'el-icon-arrow-up':'el-icon-arrow-down']" style="font-size: 20px;" @click.stop="iconClick(item, index)"></i>
+                  <i v-if="item.buyList.length" :class="[item.Invalid?'el-icon-arrow-up':'el-icon-arrow-down']" style="font-size: 20px;padding-top:10px;" @click.stop="iconClick(item, index)"></i>
                 </div>
                 <div>
                   <h5>{{item.Volume.toFixed(2)}}</h5>
@@ -80,41 +80,112 @@
                   <span style="padding-left:30px">价格: {{Number(value.price).toFixed(2)}}</span>
                   <span>剩余有效天数: {{value.dayCount}}</span>
                   <span style="width:7%;">{{value.date}}</span>
-                  <button @click.stop="cancelClick(value)">撤销</button>
+                  <button @click.stop="cancelClick(item, value)">撤销</button>
                 </li>
               </ul>
             </li>
           </ul>
         </div>
         <el-dialog
-          title="当前股票"
+          title="买入股票界面"
           :visible.sync="visible"
-          width="30%"
+          width="80%"
           center>
-          <el-form ref="form" :model="form" label-width="80px">
-            <el-form-item label="当前股价">
-              <el-input v-model="form.price">
-                <template slot="append">元</template>
-              </el-input>
-            </el-form-item>
-            <el-form-item label="限价交易">
-              <el-input v-model="form.count">
-                <template slot="append">元</template>
-              </el-input>
-            </el-form-item>
-            <el-form-item label="有效天数">
-              <el-input v-model="form.dayCount" :disabled="true">
-                <template slot="append">天</template>
-              </el-input>
-            </el-form-item>
-            <el-form-item label="时间选择">
-              <el-date-picker type="date" placeholder="选择日期" value-format="yyyy-MM-dd" v-model="form.date" style="width: 100%;"></el-date-picker>
-            </el-form-item>
+          <el-form ref="form" :inline="true" :model="form" style="text-align:center;" label-width="80px">
+            <el-row>
+              <el-col :span="24">
+                <el-form-item label="限价交易">
+                  <el-input v-model="form.price">
+                    <template slot="append">元</template>
+                  </el-input>
+                </el-form-item>
+                <el-form-item label="指定数量">
+                  <el-input v-model="form.count">
+                    <template slot="append">元</template>
+                  </el-input>
+                </el-form-item>
+                <el-form-item label="有效天数">
+                  <el-input v-model="form.dayCount" :disabled="true">
+                    <template slot="append">天</template>
+                  </el-input>
+                </el-form-item>
+                <el-form-item label="选择日期">
+                  <el-date-picker type="date" placeholder="选择日期" value-format="yyyy-MM-dd" v-model="form.date" style="width: 100%;"></el-date-picker>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-row>
+              <el-col :span="12">
+                <el-form-item label="股票列表">
+                  <el-select v-model="form.list" clearable filterable @change="portfolioListClick" placeholder="请选择股票">
+                    <el-option v-for="(item, index) in portfolioList" :label="item.Cname" :value="item.Symbol" :key="index"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <span class="dialog-footer">
+                  <el-button @click="visible = false">取 消</el-button>
+                  <el-button type="primary" @click="onSubmit">提交</el-button>
+                </span>
+              </el-col>
+            </el-row>
           </el-form>
-          <span slot="footer" class="dialog-footer">
-            <el-button @click="visible = false">取 消</el-button>
-            <el-button type="primary" @click="onSubmit">提交</el-button>
-          </span>
+          <el-row>
+            <el-col :span="24">
+              <el-table
+                :data="portfolioNewPriceList"
+                style="width: 100%">
+                <el-table-column
+                  prop="Symbol"
+                  label="股票编号"
+                  align="center"
+                  width="100">
+                </el-table-column>
+                <el-table-column
+                  prop="ClosePrice"
+                  label="收市价(元)"
+                  align="center">
+                </el-table-column>
+                <el-table-column
+                  prop="OpenPrice"
+                  align="center"
+                  label="开市价(元)">
+                </el-table-column>
+                <el-table-column
+                  prop="PrvClosePrice"
+                  align="center"
+                  label="前日收市价(元)">
+                </el-table-column>
+                <el-table-column
+                  prop="HighPrice"
+                  align="center"
+                  label="最高价(元)"
+                  width="180">
+                </el-table-column>
+                <el-table-column
+                  prop="LowPrice"
+                  align="center"
+                  label="最低价(元)">
+                </el-table-column>
+                <el-table-column
+                  prop="Date"
+                  align="center"
+                  :formatter="formatDate"
+                  label="报价时间">
+                </el-table-column>
+                <el-table-column
+                  prop="Turnover"
+                  align="center"
+                  label="成交额(元)">
+                </el-table-column>
+                <el-table-column
+                  prop="Volume"
+                  align="center"
+                  label="成交量(次)">
+                </el-table-column>
+              </el-table>
+            </el-col>
+          </el-row>
         </el-dialog>
     </div>
   </div>
@@ -122,6 +193,7 @@
 
 <script>
 import api from '@/api/api'
+import { _formatDate } from '@/assets/js'
 const opkey = 'f497ba51-c0c7-443f-94e7-ca6d736ff89e'
 const accountId = '4f6f1d13-3cc8-440e-a19f-ad18458875fd'
 export default {
@@ -137,7 +209,12 @@ export default {
       // loading
       fullscreenLoading: false,
       // 资金对象数据
-      accountCapitalInfo: {},
+      accountCapitalInfo: {
+        TotalAsset: 0,
+        TotalAmount: 0,
+        AvailableCashAmount: 0,
+        FreezeAmount: 0
+      },
       // 控制投资组合主体内容是否显示
       portfolioSection: true,
       isTrue: false,
@@ -151,11 +228,9 @@ export default {
         { id: '7', name: '盈利' },
         { id: '8', name: '状态' }
       ],
-      leftArr: [],
-      rightArr: [],
       items: [],
       currentIndex: -1,
-      itemObj: {},
+      // itemObj: {},
       // dialog 对话框的显示
       visible: false,
       // 每一条的投资组合买入的数组
@@ -163,14 +238,21 @@ export default {
         { id: 1, type: '手动买入中', count: 400, price: 33, dayCount: 1, date: '2018-20-2' }
       ],
       buyListId: 1,
+      // 股票列表
+      portfolioList: [],
+      // 股票最新报价
+      portfolioNewPriceList: [],
       form: {
         id: null,
-        price: 0,
+        list: null,
         count: 0,
+        price: 0,
         dayCount: 1,
         type: '手动买入中',
         date: ''
-      }
+      },
+      // 定时器
+      timer: null
     }
   },
 
@@ -182,14 +264,14 @@ export default {
 
   // 方法
   methods: {
+    // 格式化时间
+    formatDate (val) {
+      let t = val.Date.slice(6, 19)
+      let NewDtime = new Date(parseInt(t))
+      return _formatDate(NewDtime)
+    },
     // 获取右侧数据的方法
     _getAccountPortfolioInfos () {
-      // const loading = this.$loading({
-      //   lock: true,
-      //   text: 'Loading',
-      //   spinner: 'el-icon-loading',
-      //   background: 'rgba(0, 0, 0, 0.7)'
-      // })
       let params = {
         opkey: opkey,
         accountId: accountId
@@ -231,7 +313,6 @@ export default {
       //   }
       //   return obj
       // })
-      // loading.close()
       // })
     },
     // 资金查询接口
@@ -246,7 +327,7 @@ export default {
         })
       })
     },
-    // 获取每一只股票列表轮询更新(10s)的方法
+    // 获取左侧股票列表的方法
     _getStockList () {
       let params = {
         opkey: opkey,
@@ -287,8 +368,35 @@ export default {
         //   }
         // })
         console.log(this.items)
+        this.portfolioList = leftArr
       })
       loading.close()
+    },
+    // 获取股票最新报价的数据
+    _getStockPrice (symbol) {
+      let params = {
+        opkey: opkey,
+        market: 'HKEX',
+        symbol: symbol
+      }
+      return new Promise((resolve, reject) => {
+        api.getStockPrice(params).then((res) => {
+          resolve(res.data.Items)
+        })
+      })
+    },
+    // 获取股票详情的数据
+    _getStockDetail (symbol) {
+      let params = {
+        opkey: opkey,
+        market: 'HKEX',
+        symbol: symbol
+      }
+      return new Promise((resolve, reject) => {
+        api.getStockDetail(params).then((res) => {
+          resolve(res.data.Items)
+        })
+      })
     },
     // 确定状态图标的 方法
     icon (val) {
@@ -297,7 +405,7 @@ export default {
     // 点击上下图标的方法
     iconClick (val, index) {
       this.currentIndex = index
-      this.itemObj = Object.assign({}, val)
+      // this.itemObj = Object.assign({}, val)
       val.Invalid = !val.Invalid
       this._invalid(val)
     },
@@ -314,9 +422,9 @@ export default {
       this.currentIndex = index
       val.Invalid = !val.Invalid
       this._invalid(val)
-      // 获取每一只股票列表轮询更新(10s)的方法
-      // this._getStockList()
-      this.itemObj = Object.assign({}, val)
+      // 获取股票详情的数据
+      // this._getStockDetail(val.Symbol)
+      // this.itemObj = Object.assign({}, val)
     },
     // 关闭整个 投资组合的方法
     closeClick () {
@@ -339,22 +447,47 @@ export default {
     },
     // 买入 按钮指令的 方法
     buyClick () {
-      if (this.currentIndex === -1) {
-        this.$message({
-          type: 'warning',
-          message: '请选择一支股票!'
-        })
-      } else {
-        this.visible = true
+      this.visible = true
+    },
+    // 获取股票最新报价的数据的方法
+    portfolioListClick () {
+      // 获取股票最新报价的数据
+      this._getStockPrice(this.form.list).then((res) => {
+        this.portfolioNewPriceList = res
+      })
+      // 调用定时器函数获取最新报价数据
+      this._timeOut()
+    },
+    // 定时器封装函数
+    _timeOut () {
+      // 10 秒刷新界面
+      // 计数的
+      let count = 0
+      const time = () => {
+        this.timer = setTimeout(() => {
+          // 获取股票最新报价的数据
+          this._getStockPrice(this.form.list).then((res) => {
+            this.portfolioNewPriceList = res
+            count += 10
+            if (count > 1000) {
+              clearTimeout(self.timer)
+              count = 0
+              time()
+            }
+          })
+          time()
+        }, 10000)
       }
+      time()
     },
     // 买入指令后，提交指令的方法
     onSubmit () {
       this.buyListId++
       this.form = Object.assign({}, this.form, { id: this.buyListId })
-      this.items.find(item => item.Id === this.itemObj.Id).buyList.push(this.form)
+      this.items.find(item => item.Symbol === this.form.list).buyList.push(this.form)
       this.form = {
         id: null,
+        list: null,
         price: 0,
         count: 0,
         dayCount: 1,
@@ -363,16 +496,16 @@ export default {
       }
       this.visible = false
     },
+    // 撤销 的方法
+    cancelClick (item, value) {
+      item.buyList = item.buyList.filter(t => t.id !== value.id)
+    },
     // 手动刷新列表的方法
     refreshClick () {
-      // 获取数据的方法
-      // this._getAccountPortfolioInfos()
       // 资金查询接口
       this._getAccountCapitalById().then((res) => {
         this.accountCapitalInfo = { ...res }
       })
-      // 获取每一只股票列表轮询更新(10s)的方法
-      // this._getStockList()
       // 清空templete 数组
       this.items = []
       // 左右数据拼接的方法
@@ -398,18 +531,10 @@ export default {
 
   // 完成了 data 数据的初始化，el没有，就是说页面的dom没有完成转化，还是 {{data}} 这种
   created () {
-    // 获取数据的方法
-    // this._getAccountPortfolioInfos((res) => {
-    //   this.rightArr = res
-    // })
     // 资金查询接口
     this._getAccountCapitalById().then((res) => {
       this.accountCapitalInfo = { ...res }
     })
-    // 获取每一只股票列表轮询更新(10s)的方法
-    // this._getStockList((res) => {
-    //   this.leftArr = res
-    // })
     // 左右数据拼接的方法
     this._concatData()
   },
@@ -419,7 +544,9 @@ export default {
   },
 
   // 销毁，可以做一些定时器的销毁,缓存的清除等操作
-  destroyed () { }
+  destroyed () {
+    clearTimeout(this.timer)
+  }
 }
 </script>
 
