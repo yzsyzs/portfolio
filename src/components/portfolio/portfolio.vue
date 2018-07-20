@@ -122,7 +122,7 @@
             <el-row>
               <el-col :span="12">
                 <el-form-item label="股票列表">
-                  <el-select v-model="form.list" clearable filterable @change="portfolioListClick" placeholder="请选择股票">
+                  <el-select v-model="form.Symbol" clearable filterable @change="portfolioListClick" placeholder="请选择股票">
                     <el-option v-for="(item, index) in portfolioList" :label="item.Cname" :value="item.Symbol" :key="index"></el-option>
                   </el-select>
                 </el-form-item>
@@ -249,7 +249,7 @@ export default {
       portfolioNewPriceList: [],
       form: {
         id: null,
-        list: null,
+        Symbol: null,
         Volume: 0,
         Price: 0,
         dayCount: 1,
@@ -354,10 +354,12 @@ export default {
       })
       const promiseGetStockList = this._getStockList()
       const promiseGetAccountPortfolioInfos = this._getAccountPortfolioInfos()
+      const promiseGetAccountCapitalById = this._getAccountCapitalById()
       Promise.all([
         promiseGetStockList,
-        promiseGetAccountPortfolioInfos
-      ]).then(([leftArr, rightArr]) => {
+        promiseGetAccountPortfolioInfos,
+        promiseGetAccountCapitalById
+      ]).then(([leftArr, rightArr, getAccountCapitalById]) => {
         for (let j = 0; j < leftArr.length; j++) {
           for (let i = 0; i < rightArr.length; i++) {
             if (rightArr[i].Symbol === leftArr[j].Symbol) {
@@ -374,8 +376,9 @@ export default {
         // })
         console.log(this.items)
         this.portfolioList = leftArr
+        this.accountCapitalInfo = { ...getAccountCapitalById }
+        loading.close()
       })
-      loading.close()
     },
     // 获取股票最新报价的数据
     _getStockPrice (symbol) {
@@ -456,30 +459,37 @@ export default {
     },
     // 获取股票最新报价的数据的方法
     portfolioListClick () {
-      // 获取股票最新报价的数据
-      this._getStockPrice(this.form.list).then((res) => {
-        this.portfolioNewPriceList = res
-      })
-      // 调用定时器函数获取最新报价数据
-      this._timeOut()
+      // 改变了就要清除一下定时器
+      if (!this.form.Symbol) {
+        return false
+      } else {
+        // 获取股票最新报价的数据
+        this._getStockPrice(this.form.Symbol).then((res) => {
+          this.portfolioNewPriceList = res
+        })
+        // 调用定时器函数获取最新报价数据
+        this._timeOut()
+      }
     },
     // 定时器封装函数
     _timeOut () {
       // 10 秒刷新界面
       // 计数的
-      let count = 0
+      // let count = 0
       const time = () => {
         this.timer = setTimeout(() => {
           // 获取股票最新报价的数据
-          this._getStockPrice(this.form.list).then((res) => {
-            this.portfolioNewPriceList = res
-            count += 10
-            if (count > 1000) {
-              clearTimeout(self.timer)
-              count = 0
-              time()
-            }
-          })
+          if (this.form.Symbol) {
+            this._getStockPrice(this.form.Symbol).then((res) => {
+              this.portfolioNewPriceList = res
+              // count += 10
+              // if (count > 1000) {
+              //   clearTimeout(self.timer)
+              //   count = 0
+              //   time()
+              // }
+            })
+          }
           time()
         }, 10000)
       }
@@ -503,11 +513,11 @@ export default {
       clearTimeout(this.timer)
       this.form = {
         id: null,
-        list: null,
+        Symbol: null,
         Price: 0,
         Volume: 0,
         dayCount: 1,
-        OrderType: '手动买入中',
+        OrderType: '',
         date: ''
       }
       this.portfolioNewPriceList = []
@@ -522,10 +532,10 @@ export default {
       })
       this.buyListId++
       this.form = Object.assign({}, this.form, { id: this.buyListId })
-      this.items.find(item => item.Symbol === this.form.list).buyList.push(this.form)
+      this.items.find(item => item.Symbol === this.form.Symbol).buyList.push(this.form)
       this.form = {
         id: null,
-        list: null,
+        Symbol: null,
         Price: 0,
         Volume: 0,
         dayCount: 1,
@@ -543,11 +553,17 @@ export default {
     refreshClick () {
       this.currentIndex = -1
       // 资金查询接口
-      this._getAccountCapitalById().then((res) => {
-        this.accountCapitalInfo = { ...res }
-      })
-      // 清空templete 数组
+      // this._getAccountCapitalById().then((res) => {
+      //   this.accountCapitalInfo = { ...res }
+      // })
+      // 清空templete 数组以及accountCapitalInfo对象
       this.items = []
+      this.accountCapitalInfo = {
+        TotalAsset: 0,
+        TotalAmount: 0,
+        AvailableCashAmount: 0,
+        FreezeAmount: 0
+      }
       // 左右数据拼接的方法
       this._concatData()
     }
@@ -572,9 +588,9 @@ export default {
   // 完成了 data 数据的初始化，el没有，就是说页面的dom没有完成转化，还是 {{data}} 这种
   created () {
     // 资金查询接口
-    this._getAccountCapitalById().then((res) => {
-      this.accountCapitalInfo = { ...res }
-    })
+    // this._getAccountCapitalById().then((res) => {
+    //   this.accountCapitalInfo = { ...res }
+    // })
     // 左右数据拼接的方法
     this._concatData()
   },
