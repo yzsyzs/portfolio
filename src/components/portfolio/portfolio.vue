@@ -269,12 +269,9 @@ export default {
 
   // 方法
   methods: {
-    // 格式化时间
-    formatDate (val) {
-      let t = val.Date.slice(6, 19)
-      let NewDtime = new Date(parseInt(t))
-      return _formatDate(NewDtime)
-    },
+    /** 
+     * 获取数据的方法可以整合出一个公共的js 
+    */
     // 获取右侧数据的方法
     _getAccountPortfolioInfos () {
       let params = {
@@ -286,39 +283,6 @@ export default {
           resolve(res.data.Items)
         })
       })
-      // api.getAccountPortfolioInfos(params).then((res) => {
-      // this.rightArr = res.data.Items
-      // this.items = res.data.Items.map((item) => {
-      //   let obj = {
-      //     AverageCost: item.AverageCost,
-      //     AverageTradePrice: item.AverageTradePrice,
-      //     ChangePercentage: item.ChangePercentage,
-      //     Charge: item.Charge,
-      //     CurrentPrice: item.CurrentPrice,
-      //     HoldingDate: item.HoldingDate,
-      //     HoldingDays: item.HoldingDays,
-      //     Invalid: item.Invalid,
-      //     LastUpdateTime: item.LastUpdateTime,
-      //     Market: item.Market,
-      //     MarketValue: item.MarketValue,
-      //     MergeState: item.MergeState,
-      //     MonitorStrategyId: item.MonitorStrategyId,
-      //     MonitorStrategyName: item.MonitorStrategyName,
-      //     ProductType: item.ProductType,
-      //     Profit: item.Profit,
-      //     SellableVolume: item.SellableVolume,
-      //     Status: item.Status,
-      //     Symbol: item.Symbol,
-      //     TempProfitPercentage: item.TempProfitPercentage,
-      //     TotalVolume: item.TotalVolume,
-      //     TradeStatus: item.TradeStatus,
-      //     Volume: item.Volume,
-      //     Id: item.Id,
-      //     buyList: []
-      //   }
-      //   return obj
-      // })
-      // })
     },
     // 资金查询接口
     _getAccountCapitalById () {
@@ -342,42 +306,6 @@ export default {
         api.getStockList(params).then((res) => {
           resolve(res.data.Items)
         })
-      })
-    },
-    // 拼接左侧股票列表和右侧数据的方法
-    _concatData () {
-      const loading = this.$loading({
-        lock: true,
-        text: 'Loading',
-        spinner: 'el-icon-loading',
-        background: 'rgba(0, 0, 0, 0.7)'
-      })
-      const promiseGetStockList = this._getStockList()
-      const promiseGetAccountPortfolioInfos = this._getAccountPortfolioInfos()
-      const promiseGetAccountCapitalById = this._getAccountCapitalById()
-      Promise.all([
-        promiseGetStockList,
-        promiseGetAccountPortfolioInfos,
-        promiseGetAccountCapitalById
-      ]).then(([leftArr, rightArr, getAccountCapitalById]) => {
-        for (let j = 0; j < leftArr.length; j++) {
-          for (let i = 0; i < rightArr.length; i++) {
-            if (rightArr[i].Symbol === leftArr[j].Symbol) {
-              this.items.push(Object.assign({}, rightArr[i], leftArr[j], { buyList: [] }))
-            }
-          }
-        }
-        // leftArr.forEach((item) => {
-        //   for (let i = 0; i < rightArr.length; i++) {
-        //     if (rightArr[i].Symbol === item.Symbol) {
-        //       this.items.push(Object.assign({}, rightArr[i], item, { buyList: [] }))
-        //     }
-        //   }
-        // })
-        console.log(this.items)
-        this.portfolioList = leftArr
-        this.accountCapitalInfo = { ...getAccountCapitalById }
-        loading.close()
       })
     },
     // 获取股票最新报价的数据
@@ -406,6 +334,15 @@ export default {
         })
       })
     },
+    /** 
+     * 获取数据的方法end
+    */
+    // 格式化时间
+    formatDate (val) {
+      let t = val.Date.slice(6, 19)
+      let NewDtime = new Date(parseInt(t))
+      return _formatDate(NewDtime)
+    },
     // 确定状态图标的 方法
     icon (val) {
       return val === 'TRADEIN' ? 'icon-buy' : val === 'TRADEOUT' ? 'icon-buysell' : 'icon-sell'
@@ -430,9 +367,6 @@ export default {
       this.currentIndex = index
       val.Invalid = !val.Invalid
       this._invalid(val)
-      // 获取股票详情的数据
-      // this._getStockDetail(val.Symbol)
-      // this.itemObj = Object.assign({}, val)
     },
     // 关闭整个 投资组合的方法
     closeClick () {
@@ -524,19 +458,46 @@ export default {
       this.portfolioNewPriceList = []
       this.visible = false
     },
+    // 拼接左侧股票列表和右侧数据的方法
+    _concatData () {
+      const loading = this.$loading({
+        lock: true,
+        text: 'Loading',
+        spinner: 'el-icon-loading',
+        background: 'rgba(0, 0, 0, 0.7)'
+      })
+      const promiseGetStockList = this._getStockList()
+      const promiseGetAccountPortfolioInfos = this._getAccountPortfolioInfos()
+      const promiseGetAccountCapitalById = this._getAccountCapitalById()
+      Promise.all([
+        promiseGetStockList,
+        promiseGetAccountPortfolioInfos,
+        promiseGetAccountCapitalById
+      ]).then(([leftArr, rightArr, getAccountCapitalById]) => {
+        for (let j = 0; j < leftArr.length; j++) {
+          for (let i = 0; i < rightArr.length; i++) {
+            if (rightArr[i].Symbol === leftArr[j].Symbol) {
+              this.items.push(Object.assign({}, rightArr[i], leftArr[j], { buyList: [] }))
+            }
+          }
+        }
+        console.log(this.items)
+        this.portfolioList = leftArr
+        this.accountCapitalInfo = { ...getAccountCapitalById }
+        loading.close()
+      })
+    },
     // 买入指令后，提交指令的方法
     onSubmit () {
       clearTimeout(this.timer)
       // 获得交易码
-      // api.beginTradeRequest({ opkey: opkey }).then((res) => {
-      //   let code = res.data
       // post 请求提交买入股票的方法
+      this.visible = false
       let code = sessionStorage.getItem('code')
       code = JSON.parse(code)
       this._commitManualTrade(code).then((res) => {
         console.log(res)
       })
-      // })
       this.buyListId++
       this.form = Object.assign({}, this.form, { id: this.buyListId })
       this.items.find(item => item.Symbol === this.form.Symbol).buyList.push(this.form)
@@ -551,7 +512,7 @@ export default {
         date: ''
       }
       this.portfolioNewPriceList = []
-      this.visible = false
+      // this.visible = false
     },
     // 撤销 的方法
     cancelClick (item, value) {
@@ -560,10 +521,6 @@ export default {
     // 手动刷新列表的方法
     refreshClick () {
       this.currentIndex = -1
-      // 资金查询接口
-      // this._getAccountCapitalById().then((res) => {
-      //   this.accountCapitalInfo = { ...res }
-      // })
       // 清空templete 数组以及accountCapitalInfo对象
       this.items = []
       this.accountCapitalInfo = {
@@ -599,10 +556,6 @@ export default {
       console.log(res.data)
       sessionStorage.setItem('code', JSON.stringify(res.data))
     })
-    // 资金查询接口
-    // this._getAccountCapitalById().then((res) => {
-    //   this.accountCapitalInfo = { ...res }
-    // })
     // 左右数据拼接的方法
     this._concatData()
   },
