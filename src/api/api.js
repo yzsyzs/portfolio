@@ -29,5 +29,9 @@ export default {
   // 获取token 的方法
   verifyUserAuthorizationCode: (data) => {
     return axios.post(`/api/TradeSystem2_8_8_Test/InvestorService.svc/rest/VerifyUserAuthorizationCode`, data)
+  },
+  // 提交交易前请求的接口
+  beginTradeRequest: (req) => {
+    return axios.get(`/api/TradeSystem2_8_8_Test/TradeService.svc/rest/BeginTradeRequest`, req)
   }
 }

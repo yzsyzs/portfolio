@@ -495,12 +495,13 @@ export default {
       }
       time()
     },
-    _commitManualTrade () {
+    _commitManualTrade (code) {
       let params = {
         opkey: opkey,
         accountId: accountId,
         tradeType: 'BUY',
-        manualtradeRequest: this.form
+        manualtradeRequest: this.form,
+        TransactionKey: code
       }
       return new Promise((resolve, reject) => {
         api.commitManualTrade(params).then((res) => {
@@ -526,9 +527,13 @@ export default {
     // 买入指令后，提交指令的方法
     onSubmit () {
       clearTimeout(this.timer)
-      // post 请求提交买入股票的方法
-      this._commitManualTrade().then((res) => {
-        console.log(res)
+      // 获得交易码
+      api.beginTradeRequest({ opkey: opkey }).then((res) => {
+        let code = res.data
+        // post 请求提交买入股票的方法
+        this._commitManualTrade(code).then((res) => {
+          console.log(res)
+        })
       })
       this.buyListId++
       this.form = Object.assign({}, this.form, { id: this.buyListId })
@@ -597,9 +602,9 @@ export default {
   },
   // 完成挂载，相当于dom ready
   mounted () {
-    let params = { opkey: opkey, authorizationcode: 'fdsal' }
+    let params = { opkey: opkey, authorizationcode: 'dfsg' }
     api.verifyUserAuthorizationCode(params).then((res) => {
-      console.log(res)
+      console.log(res.data)
     })
   },
 
