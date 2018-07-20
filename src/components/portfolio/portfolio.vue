@@ -533,6 +533,7 @@ export default {
       this.buyListId++
       this.form = Object.assign({}, this.form, { id: this.buyListId })
       this.items.find(item => item.Symbol === this.form.Symbol).buyList.push(this.form)
+      this.items.find(item => item.Symbol === this.form.Symbol).Status = 'TRADEIN'
       this.form = {
         id: null,
         Symbol: null,
