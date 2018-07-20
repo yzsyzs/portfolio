@@ -528,13 +528,15 @@ export default {
     onSubmit () {
       clearTimeout(this.timer)
       // 获得交易码
-      api.beginTradeRequest({ opkey: opkey }).then((res) => {
-        let code = res.data
-        // post 请求提交买入股票的方法
-        this._commitManualTrade(code).then((res) => {
-          console.log(res)
-        })
+      // api.beginTradeRequest({ opkey: opkey }).then((res) => {
+      //   let code = res.data
+      // post 请求提交买入股票的方法
+      let code = sessionStorage.getItem('code')
+      code = JSON.parse(code)
+      this._commitManualTrade(code).then((res) => {
+        console.log(res)
       })
+      // })
       this.buyListId++
       this.form = Object.assign({}, this.form, { id: this.buyListId })
       this.items.find(item => item.Symbol === this.form.Symbol).buyList.push(this.form)
@@ -593,6 +595,10 @@ export default {
 
   // 完成了 data 数据的初始化，el没有，就是说页面的dom没有完成转化，还是 {{data}} 这种
   created () {
+    api.beginTradeRequest({ opkey: opkey }).then((res) => {
+      console.log(res.data)
+      sessionStorage.setItem('code', JSON.stringify(res.data))
+    })
     // 资金查询接口
     // this._getAccountCapitalById().then((res) => {
     //   this.accountCapitalInfo = { ...res }
@@ -603,6 +609,7 @@ export default {
   // 完成挂载，相当于dom ready
   mounted () {
     let params = { opkey: opkey, authorizationcode: 'dfsg' }
+    // params = JSON.stringify(params)
     api.verifyUserAuthorizationCode(params).then((res) => {
       console.log(res.data)
     })

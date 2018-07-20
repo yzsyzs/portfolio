@@ -27,8 +27,8 @@ export default {
     return axios.post(`/api/TradeSystem2_8_8_Test/TradeService.svc/rest/CommitManualTrade`, data)
   },
   // 获取token 的方法
-  verifyUserAuthorizationCode: (data) => {
-    return axios.post(`/api/TradeSystem2_8_8_Test/InvestorService.svc/rest/VerifyUserAuthorizationCode`, data)
+  verifyUserAuthorizationCode: (params) => {
+    return axios.post(`/api/TradeSystem2_8_8_Test/InvestorService.svc/rest/VerifyUserAuthorizationCode`, params)
   },
   // 提交交易前请求的接口
   beginTradeRequest: (req) => {

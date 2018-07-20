@@ -6,7 +6,7 @@ import router from '../router/index'
 
 // axios 配置
 axios.defaults.timeout = 5000
-
+// axios.defaults.headers['Content-Type'] = 'application/x-www-form-urlencoded'
 // http request 拦截器
 axios.interceptors.request.use(
   config => {
@@ -15,7 +15,7 @@ axios.interceptors.request.use(
     // }
     // config.data = JSON.stringify(config.data)
     // config.headers = {
-    //   'Content-Type': 'application/x-xxx-form-urlencoded'
+    //   'Content-Type': 'application/x-www-form-urlencoded'
     // }
     return config
   },
