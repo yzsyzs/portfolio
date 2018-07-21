@@ -269,8 +269,8 @@ export default {
 
   // 方法
   methods: {
-    /** 
-     * 获取数据的方法可以整合出一个公共的js 
+    /**
+     * 获取数据的方法可以整合出一个公共的js
     */
     // 获取右侧数据的方法
     _getAccountPortfolioInfos () {
@@ -334,7 +334,7 @@ export default {
         })
       })
     },
-    /** 
+    /**
      * 获取数据的方法end
     */
     // 格式化时间
