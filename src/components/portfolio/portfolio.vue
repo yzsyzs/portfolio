@@ -474,13 +474,13 @@ export default {
         promiseGetAccountPortfolioInfos,
         promiseGetAccountCapitalById
       ]).then(([leftArr, rightArr, getAccountCapitalById]) => {
-        for (let j = 0; j < leftArr.length; j++) {
-          for (let i = 0; i < rightArr.length; i++) {
-            if (rightArr[i].Symbol === leftArr[j].Symbol) {
-              this.items.push(Object.assign({}, rightArr[i], leftArr[j], { buyList: [] }))
-            }
-          }
-        }
+        let hash = {}
+        rightArr.forEach(item => hash[item.Symbol] = item)
+        this.items = leftArr.map(item => {
+          let obj = {}
+          for (k in hash) if (k == item.Symbol) obj = { ... item, ... hash[k] }
+          return obj
+        })
         console.log(this.items)
         this.portfolioList = leftArr
         this.accountCapitalInfo = { ...getAccountCapitalById }
